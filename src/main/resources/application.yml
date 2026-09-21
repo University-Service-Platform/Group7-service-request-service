@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: service-request-service
+  profiles:
+    active: dev
+  jpa:
+    hibernate:
+      # Schema is owned by Flyway migrations (db/migration), never Hibernate auto-DDL in real use.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # main brief requirement: services must expose basic health information
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+# Placeholder-and-swap block (guide §7 / §13). Nothing here is a real secret -
+# rotate before this ever points at anything but your own machine.
+usm:
+  jwt:
+    # Same placeholder secret is shared by work-order-service ONLY for the
+    # internal service-to-service call described in the README. Group 5 will
+    # eventually own real issuance/signing - swap this whole block then.
+    secret: ${JWT_SECRET:"sprint1-placeholder-dev-secret-key-change-me-before-anything-real-CHANGE"}
+    issuer: ${JWT_ISSUER:"usm-g7-dev"}
+    expiration-minutes: 60
+  internal:
+    # Role used for service-to-service calls (see security.Role.SERVICE)
+    service-role-department: "SYSTEM"
+
+logging:
+  level:
+    com.usm.servicerequest: INFO
