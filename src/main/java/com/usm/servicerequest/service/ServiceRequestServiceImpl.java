@@ -1,11 +1,13 @@
 package com.usm.servicerequest.service;
 
+import com.usm.servicerequest.client.FacilityValidationClient;
 import com.usm.servicerequest.domain.RequestCategory;
 import com.usm.servicerequest.domain.RequestStatus;
 import com.usm.servicerequest.domain.ServiceRequest;
 import com.usm.servicerequest.dto.ConfirmRequest;
 import com.usm.servicerequest.dto.CreateServiceRequestRequest;
 import com.usm.servicerequest.dto.EscalateRequest;
+import com.usm.servicerequest.dto.FacilityValidationResult;
 import com.usm.servicerequest.dto.InternalStatusUpdateRequest;
 import com.usm.servicerequest.dto.RejectRequest;
 import com.usm.servicerequest.dto.ServiceRequestResponse;
@@ -17,6 +19,10 @@ import com.usm.servicerequest.exception.ResourceNotFoundException;
 import com.usm.servicerequest.repository.ServiceRequestRepository;
 import com.usm.servicerequest.security.AuthContext;
 import com.usm.servicerequest.security.Role;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +37,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class ServiceRequestServiceImpl implements ServiceRequestService {
+
+    private static final Logger log = LoggerFactory.getLogger(ServiceRequestServiceImpl.class);
 
     /** Roles that may see every request, not just their own (BR-10). */
     private static final Set<Role> CAN_VIEW_ALL = EnumSet.of(Role.SERVICE_DESK_OFFICER, Role.SERVICE);
@@ -49,16 +57,52 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     private final ServiceRequestRepository repository;
     private final RequestIdGenerator idGenerator;
+    private final FacilityValidationClient facilityValidationClient;
+    private final boolean enforceValidation;
 
     public ServiceRequestServiceImpl(ServiceRequestRepository repository, RequestIdGenerator idGenerator) {
+        this(repository, idGenerator, null, false);
+    }
+
+    public ServiceRequestServiceImpl(
+            ServiceRequestRepository repository,
+            RequestIdGenerator idGenerator,
+            FacilityValidationClient facilityValidationClient) {
+        this(repository, idGenerator, facilityValidationClient, false);
+    }
+
+    @Autowired
+    public ServiceRequestServiceImpl(
+            ServiceRequestRepository repository,
+            RequestIdGenerator idGenerator,
+            FacilityValidationClient facilityValidationClient,
+            @Value("${group6.facility-service.enforce-validation:false}") boolean enforceValidation) {
         this.repository = repository;
         this.idGenerator = idGenerator;
+        this.facilityValidationClient = facilityValidationClient;
+        this.enforceValidation = enforceValidation;
     }
 
     @Override
     public ServiceRequestResponse create(CreateServiceRequestRequest request, AuthContext caller) {
         // BR-01: creation is limited to Student / Academic Staff / Admin Staff at the controller
         // (@PreAuthorize) - this method assumes that check already passed.
+
+        boolean isFacilityOrEquipment = request.category() == RequestCategory.FACILITY
+                || request.category() == RequestCategory.EQUIPMENT;
+        boolean hasLocation = request.location() != null && !request.location().isBlank();
+
+        if (isFacilityOrEquipment && hasLocation && facilityValidationClient != null) {
+            FacilityValidationResult result = facilityValidationClient.validateByCode(request.location());
+            if (result != null && !result.validForReservation()) {
+                if (enforceValidation) {
+                    throw new InvalidRequestException(result.message());
+                } else {
+                    log.warn("Facility validation warning for location '{}': {}", request.location(), result.message());
+                }
+            }
+        }
+
         String requestId = idGenerator.nextId();
         ServiceRequest entity = new ServiceRequest(
                 requestId,

@@ -17,6 +17,8 @@ import com.usm.servicerequest.exception.InvalidRequestException;
 import com.usm.servicerequest.exception.ResourceNotFoundException;
 import com.usm.servicerequest.repository.ServiceRequestRepository;
 import com.usm.servicerequest.security.AuthContext;
+import com.usm.servicerequest.client.FacilityValidationClient;
+import com.usm.servicerequest.dto.FacilityValidationResult;
 import com.usm.servicerequest.security.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -444,5 +449,75 @@ class ServiceRequestServiceImplTest {
         assertThatThrownBy(() -> service.summary("invalid_group", OFFICER))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("Unsupported groupBy");
+    }
+
+    @Test
+    void create_facilityCategory_whenEnforceValidationFalse_proceedsWhenValidationFails() {
+        FacilityValidationClient mockClient = mock(FacilityValidationClient.class);
+        when(mockClient.validateByCode("LAB-101"))
+                .thenReturn(new FacilityValidationResult(1L, "LAB-101", 1L, true, true, false, 30, false, null, null, false, "Resource is currently marked unavailable"));
+        when(idGenerator.nextId()).thenReturn("SR-2026-0099");
+
+        ServiceRequestServiceImpl customService = new ServiceRequestServiceImpl(repository, idGenerator, mockClient, false);
+
+        CreateServiceRequestRequest request = new CreateServiceRequestRequest(
+                RequestCategory.FACILITY, "LAB-101", RequestPriority.HIGH, "Need room", null);
+
+        ServiceRequestResponse response = customService.create(request, STUDENT);
+
+        assertThat(response.requestId()).isEqualTo("SR-2026-0099");
+        assertThat(response.category()).isEqualTo(RequestCategory.FACILITY);
+        verify(mockClient).validateByCode("LAB-101");
+    }
+
+    @Test
+    void create_facilityCategory_whenEnforceValidationTrue_throwsWhenValidationFails() {
+        FacilityValidationClient mockClient = mock(FacilityValidationClient.class);
+        when(mockClient.validateByCode("LAB-101"))
+                .thenReturn(new FacilityValidationResult(1L, "LAB-101", 1L, true, true, false, 30, false, null, null, false, "Resource is currently marked unavailable"));
+
+        ServiceRequestServiceImpl customService = new ServiceRequestServiceImpl(repository, idGenerator, mockClient, true);
+
+        CreateServiceRequestRequest request = new CreateServiceRequestRequest(
+                RequestCategory.FACILITY, "LAB-101", RequestPriority.HIGH, "Need room", null);
+
+        assertThatThrownBy(() -> customService.create(request, STUDENT))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessage("Resource is currently marked unavailable");
+        verify(mockClient).validateByCode("LAB-101");
+    }
+
+    @Test
+    void create_facilityCategory_whenEnforceValidationTrue_succeedsWhenValid() {
+        FacilityValidationClient mockClient = mock(FacilityValidationClient.class);
+        when(mockClient.validateByCode("LAB-101"))
+                .thenReturn(new FacilityValidationResult(1L, "LAB-101", 1L, true, true, true, 30, false, null, null, true, "Resource is valid and available for reservation"));
+        when(idGenerator.nextId()).thenReturn("SR-2026-0100");
+
+        ServiceRequestServiceImpl customService = new ServiceRequestServiceImpl(repository, idGenerator, mockClient, true);
+
+        CreateServiceRequestRequest request = new CreateServiceRequestRequest(
+                RequestCategory.FACILITY, "LAB-101", RequestPriority.HIGH, "Need room", null);
+
+        ServiceRequestResponse response = customService.create(request, STUDENT);
+
+        assertThat(response.requestId()).isEqualTo("SR-2026-0100");
+        verify(mockClient).validateByCode("LAB-101");
+    }
+
+    @Test
+    void create_itCategory_doesNotCallFacilityValidation() {
+        FacilityValidationClient mockClient = mock(FacilityValidationClient.class);
+        when(idGenerator.nextId()).thenReturn("SR-2026-0101");
+
+        ServiceRequestServiceImpl customService = new ServiceRequestServiceImpl(repository, idGenerator, mockClient, true);
+
+        CreateServiceRequestRequest request = new CreateServiceRequestRequest(
+                RequestCategory.IT, "LAB-101", RequestPriority.HIGH, "Network down", null);
+
+        ServiceRequestResponse response = customService.create(request, STUDENT);
+
+        assertThat(response.requestId()).isEqualTo("SR-2026-0101");
+        verifyNoInteractions(mockClient);
     }
 }

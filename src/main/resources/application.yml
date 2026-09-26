@@ -48,6 +48,11 @@ usm:
     # Role used for service-to-service calls (see security.Role.SERVICE)
     service-role-department: "SYSTEM"
 
+group6:
+  facility-service:
+    base-url: http://localhost:8081
+    enforce-validation: false
+
 logging:
   level:
     com.usm.servicerequest: INFO
