@@ -29,12 +29,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/**
- * Backend Dev 1 surface (guide §2/§4.1). The internal `/status` callback at
- * the bottom of this class is service-to-service only - see its own javadoc
- * and the README's "Service-to-service auth" section for why it stays on
- * this same base path instead of a separate controller.
- */
 @RestController
 @RequestMapping("/api/service-requests")
 @Tag(name = "Service Requests", description = "Submit, triage, reject/escalate and confirm service requests.")
@@ -107,12 +101,6 @@ public class ServiceRequestController {
         return service.confirm(id, request, AuthContextHolder.require());
     }
 
-    /**
-     * INTERNAL - service-to-service only (guide §4.1: "Called by work-order-service to push
-     * Assigned/Resolved status + timestamp... not exposed to the frontend/gateway"). Same base
-     * path as the rest of this controller by design, matching what the guide documents - keep
-     * this path OUT of the API Gateway's public route table (README "Service-to-service auth").
-     */
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('SERVICE')")
     @Operation(summary = "INTERNAL ONLY - work-order-service pushes Assigned/InProgress/Resolved here")

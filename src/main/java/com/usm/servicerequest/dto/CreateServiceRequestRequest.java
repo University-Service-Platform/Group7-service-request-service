@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-/** US-01, FR-01, API-01 (guide §4.1). */
 public record CreateServiceRequestRequest(
 
         @NotNull(message = "category is required")
@@ -16,7 +15,6 @@ public record CreateServiceRequestRequest(
         @Size(max = 255)
         String location,
 
-        // Requester's suggestion only - the officer may override at triage (§3.1).
         @NotNull(message = "priority is required")
         RequestPriority priority,
 

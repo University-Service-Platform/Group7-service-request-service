@@ -85,8 +85,6 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Override
     public ServiceRequestResponse create(CreateServiceRequestRequest request, AuthContext caller) {
-        // BR-01: creation is limited to Student / Academic Staff / Admin Staff at the controller
-        // (@PreAuthorize) - this method assumes that check already passed.
 
         boolean isFacilityOrEquipment = request.category() == RequestCategory.FACILITY
                 || request.category() == RequestCategory.EQUIPMENT;

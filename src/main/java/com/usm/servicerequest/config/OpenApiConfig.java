@@ -8,12 +8,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Publishes a live OpenAPI contract at /v3/api-docs and /swagger-ui.html -
- * guide §7: "publish OpenAPI specs for both services now, even in draft
- * form... publishing it before they build against it is what the project's
- * change-control rule actually asks for."
- */
+
 @Configuration
 public class OpenApiConfig {
 

@@ -7,7 +7,6 @@ import com.usm.servicerequest.domain.ServiceRequest;
 
 import java.time.Instant;
 
-/** Full detail representation - GET .../{id} and GET .../ list both return this shape (guide §4.1). */
 public record ServiceRequestResponse(
         String requestId,
         String requesterId,

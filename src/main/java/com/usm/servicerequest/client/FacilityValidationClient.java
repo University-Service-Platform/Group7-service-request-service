@@ -11,9 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-/**
- * Client for Group 6 (facility-resource-service) resource validation endpoint.
- */
 @Component
 public class FacilityValidationClient {
 
@@ -34,15 +31,6 @@ public class FacilityValidationClient {
         this.baseUrl = baseUrl == null ? "" : baseUrl.replaceAll("/+$", "");
     }
 
-    /**
-     * Validates a resource code against Group 6's facility-resource-service.
-     * On connection refused, timeout, or 4xx/5xx errors, catches the exception,
-     * logs a WARN, and returns a safe fallback result with exists=false,
-     * validForReservation=false, message="Facility validation service unreachable".
-     *
-     * @param code the facility/resource code to validate
-     * @return the validation result, or fallback result on failure
-     */
     public FacilityValidationResult validateByCode(String code) {
         if (code == null || code.isBlank()) {
             log.warn("Facility validation requested with blank code");

@@ -37,12 +37,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * First-draft unit tests for the business rules in guide §5, written the way
- * the guide's §12 describes using AI: a fast first pass you then run, read,
- * and extend yourself with the acceptance-criteria cases your BA report
- * actually calls out.
- */
 @ExtendWith(MockitoExtension.class)
 class ServiceRequestServiceImplTest {
 

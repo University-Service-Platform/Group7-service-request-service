@@ -12,13 +12,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
-/**
- * §3.1 of the guide. Fields map 1:1 onto V1__create_service_request_table.sql.
- *
- * requesterId is deliberately just an opaque ID from the JWT subject claim -
- * per the guide's note under §3.1, this service does NOT store profile data
- * (name, email, etc). Group 5's identity-access-service owns that.
- */
+
 @Entity
 @Table(name = "service_request")
 public class ServiceRequest {

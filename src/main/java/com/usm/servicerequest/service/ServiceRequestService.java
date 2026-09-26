@@ -31,7 +31,6 @@ public interface ServiceRequestService {
 
     ServiceRequestResponse confirm(String requestId, ConfirmRequest request, AuthContext caller);
 
-    /** Internal, service-to-service only (guide §4.1). */
     ServiceRequestResponse applyInternalStatusUpdate(String requestId, InternalStatusUpdateRequest request,
                                                        AuthContext caller);
 

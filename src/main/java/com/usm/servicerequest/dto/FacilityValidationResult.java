@@ -2,10 +2,7 @@ package com.usm.servicerequest.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-/**
- * Nested data payload returned by Group 6's facility/resource validation endpoint
- * (GET /api/resources/code/{code}/validate).
- */
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record FacilityValidationResult(
         Long resourceId,
