@@ -2,27 +2,30 @@ spring:
   application:
     name: service-request-service
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE}
+  datasource:
+    url: ${DB_URL:jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:service_request_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      # Schema is owned by Flyway migrations (db/migration), never Hibernate auto-DDL in real use.
       ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
   flyway:
     enabled: true
     baseline-on-migrate: true
 
 server:
-  port: 8081
+  port: ${SERVER_PORT}
 
 management:
   endpoints:
     web:
       exposure:
-        # main brief requirement: services must expose basic health information
         include: health,info
   endpoint:
     health:
@@ -34,24 +37,18 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
-# Placeholder-and-swap block (guide §7 / §13). Nothing here is a real secret -
-# rotate before this ever points at anything but your own machine.
 usm:
   jwt:
-    # Same placeholder secret is shared by work-order-service ONLY for the
-    # internal service-to-service call described in the README. Group 5 will
-    # eventually own real issuance/signing - swap this whole block then.
-    secret: ${JWT_SECRET:"sprint1-placeholder-dev-secret-key-change-me-before-anything-real-CHANGE"}
-    issuer: ${JWT_ISSUER:"usm-g7-dev"}
-    expiration-minutes: 60
-  internal:
-    # Role used for service-to-service calls (see security.Role.SERVICE)
-    service-role-department: "SYSTEM"
+    secret: ${JWT_SECRET}
+    issuer: ${JWT_ISSUER}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES}
+  dev-tools:
+    enabled: ${DEV_TOOLS_ENABLED}
 
 group6:
   facility-service:
-    base-url: http://localhost:8081
-    enforce-validation: false
+    base-url: ${FACILITY_SERVICE_BASE_URL}
+    enforce-validation: ${ENFORCE_FACILITY_VALIDATION}
 
 logging:
   level:

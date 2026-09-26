@@ -9,7 +9,8 @@ target/
 
 # Environment & local config (never commit secrets or passwords)
 .env
-.env.*
+.env.local
+!.env.example
 *.env
 application-local.yml
 application-local.properties
