@@ -47,7 +47,7 @@ public class ServiceRequestController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('STUDENT','ACADEMIC_STAFF','ADMIN_STAFF')")
+    @PreAuthorize("hasAnyRole('STUDENT','ACADEMIC_STAFF','ADMINISTRATIVE_STAFF')")
     @Operation(summary = "Submit a new service request (US-01, FR-01, API-01)")
     public ResponseEntity<ServiceRequestResponse> create(@Valid @RequestBody CreateServiceRequestRequest request) {
         ServiceRequestResponse created = service.create(request, AuthContextHolder.require());
@@ -65,7 +65,7 @@ public class ServiceRequestController {
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('SERVICE_DESK_OFFICER','ADMIN_STAFF')")
+    @PreAuthorize("hasAnyRole('SERVICE_DESK_OFFICER','ADMINISTRATIVE_STAFF')")
     @Operation(summary = "Category/status/priority/location/service-unit counts (US-13, FR-12)")
     public SummaryResponse summary(@RequestParam(required = false) String groupBy) {
         return service.summary(groupBy, AuthContextHolder.require());

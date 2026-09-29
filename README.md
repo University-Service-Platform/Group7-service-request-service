@@ -70,7 +70,7 @@ curl -X POST http://localhost:8081/api/dev/token \
 ```
 
 Use the returned token as `Authorization: Bearer <token>` on any other
-endpoint. Valid `role` values: `STUDENT`, `ACADEMIC_STAFF`, `ADMIN_STAFF`,
+endpoint. Valid `role` values: `STUDENT`, `ACADEMIC_STAFF`, `ADMINISTRATIVE_STAFF`,
 `SERVICE_DESK_OFFICER`, `TECHNICIAN`, `SERVICE`.
 
 **This endpoint must never be enabled outside your own machine** - it lets
