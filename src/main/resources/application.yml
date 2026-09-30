@@ -48,6 +48,18 @@ usm:
     # Role used for service-to-service calls (see security.Role.SERVICE)
     service-role-department: "SYSTEM"
 
+group6:
+  facility-service:
+    base-url: http://localhost:8081
+    enforce-validation: false
+
+services:
+  identity:
+    base-url: ${IDENTITY_SERVICE_BASE_URL:http://localhost:8001}
+    jwks-uri: ${services.identity.base-url}/.well-known/jwks.json
+    issuer: university-identity-service
+    audience: university-services-platform
+
 logging:
   level:
     com.usm.servicerequest: INFO

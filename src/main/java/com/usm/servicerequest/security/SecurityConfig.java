@@ -20,9 +20,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtTokenService jwtTokenService;
+    private final ExternalTokenValidator externalTokenValidator;
+    private final IdentityServiceProperties identityProperties;
 
-    public SecurityConfig(JwtTokenService jwtTokenService) {
+    public SecurityConfig(JwtTokenService jwtTokenService,
+                          ExternalTokenValidator externalTokenValidator,
+                          IdentityServiceProperties identityProperties) {
         this.jwtTokenService = jwtTokenService;
+        this.externalTokenValidator = externalTokenValidator;
+        this.identityProperties = identityProperties;
     }
 
     @Bean
@@ -38,7 +44,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new JwtAuthFilter(jwtTokenService), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthFilter(jwtTokenService, externalTokenValidator, identityProperties),
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

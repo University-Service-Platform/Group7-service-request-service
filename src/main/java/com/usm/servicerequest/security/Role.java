@@ -1,20 +1,32 @@
 package com.usm.servicerequest.security;
 
 /**
- * Roles as claimed in the JWT `role` claim (see JwtTokenService and guide §7).
- * Exact claim NAME still needs confirming with Group 5 (guide §9/§14 item 5);
- * the set of role VALUES below comes from who-can-call-it in guide §4.1/§4.2.
+ * Roles from Group 5's identity-access-service and this project's internal service role.
  *
- * SERVICE is not one of Group 5's real user roles - it is this project's own
- * placeholder for service-to-service calls (work-order-service calling back
- * into this service). See README "Service-to-service auth" for why, and
- * guide §13 for the general placeholder-and-swap pattern this follows.
+ * Real Group 5 user roles:
+ * - STUDENT
+ * - ACADEMIC_STAFF
+ * - ADMINISTRATIVE_STAFF (renamed from ADMIN_STAFF to match Group 5's contract)
+ * - SERVICE_DESK_OFFICER
+ * - TECHNICIAN
+ * - ADMIN
+ * - STAFF
+ * - RESOURCE_MANAGER
+ * - EVENT_ORGANIZER
+ *
+ * Internal role:
+ * - SERVICE: Internal placeholder for service-to-service calls (work-order-service
+ *   calling back into this service).
  */
 public enum Role {
     STUDENT,
     ACADEMIC_STAFF,
-    ADMIN_STAFF,
+    ADMINISTRATIVE_STAFF,
     SERVICE_DESK_OFFICER,
     TECHNICIAN,
+    ADMIN,
+    STAFF,
+    RESOURCE_MANAGER,
+    EVENT_ORGANIZER,
     SERVICE
 }
