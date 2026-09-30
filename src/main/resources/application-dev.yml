@@ -1,9 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/service_request_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:12345}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
 usm:
   dev-tools:
