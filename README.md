@@ -77,6 +77,14 @@ endpoint. Valid `role` values: `STUDENT`, `ACADEMIC_STAFF`, `ADMINISTRATIVE_STAF
 anyone claim any role. It only exists because `usm.dev-tools.enabled=true`
 in `application-dev.yml`; leave that out of any real deployment profile.
 
+### Manual testing against Group 6
+
+When submitting a request with category `FACILITY` or `EQUIPMENT`, `FacilityValidationClient` validates the `location` field against Group 6's resource validation endpoint (`GET /api/resources/code/{code}/validate`). For manual testing via Swagger UI or `curl`, use the confirmed seed codes:
+
+- **Confirmed valid / available resource codes**: `LAB-101`, `AUD-MAIN`, `STUDY-POD-01`, `BASKETBALL-COURT-1` (confirms resource exists and `validForReservation=true`).
+- **Negative-path testing ("resource not found")**: `LAB-999` (triggers a "resource not found" response from Group 6).
+- **Inactive / unavailable resources**: No confirmed inactive/unavailable code exists yet from Group 6, so that path can currently only be exercised with a mocked response in unit tests.
+
 ## API summary
 
 See the live Swagger UI for full request/response schemas. Guide §4.1 has the
@@ -105,10 +113,10 @@ full story/FR/role mapping this table is drawn from.
 
 ## Placeholder-and-swap items (guide §7 / §13)
 
-| Placeholder today | File(s) | Swap when |
+| Placeholder today | File(s) | Swap when / Status |
 | --- | --- | --- |
-| JWT signing key + claim names (`sub`/`role`/`department`) | `application.yml` (`usm.jwt.*`), `JwtTokenService` | Group 5 confirms real claim names/signing config |
-| `location` as free text | `CreateServiceRequestRequest`, `ServiceRequest.location` | Group 6 publishes its facility-validation API - add a `FacilityValidator` interface call behind this field |
+| JWT signing key + claim names (`sub`/`role`/`department`) | `application.yml` (`services.identity.*`), `ExternalTokenValidator`, `IdentityJwksProvider`, `JwtAuthFilter` | **Done** — RS256/JWKS verification against Group 5's real published contract is built, tested, and merged; internal HS256 remains for dev and S2S calls |
+| `location` as free text | `CreateServiceRequestRequest`, `ServiceRequest.location`, `FacilityValidationClient` | `FacilityValidationClient` is built and wired into `ServiceRequestServiceImpl`. Open: whether `location` should be constrained to match Group 6's resource-code format (e.g. `LAB-101`), since right now it's still free text and nothing enforces the format |
 | Status enum names | `RequestStatus` | Tech Lead locks the final names - this is the only file that changes |
 | Response envelope / error shape | `GlobalExceptionHandler`, `ApiError` | API Gateway team agrees a shared shape - wrap responses, don't rewrite logic |
 
@@ -146,11 +154,8 @@ Sprint 1 BA report and Backend Developer Guide, then reviewed, run, and
 adapted here. Per the module's submission rules, update this section (and
 your PR descriptions) with specifics as you extend the code yourself.
 
-## What's still open (do these yourself - see guide §14)
+## What's still open (see guide §14)
 
-- Confirm real JWT claim names with Group 5.
-- Confirm whether `location` should already reference a Group 6 facility ID.
-- Get the final status enum names signed off by your Tech Lead.
+- Confirm whether `location` should already reference a Group 6 facility ID and whether format constraints (e.g. matching `LAB-101`) should be enforced.
+- Get the final status enum names signed off by your Tech Lead (specifically the unresolved `RequestStatus.CANCELLED` decision: who can cancel and from which statuses).
 - Agree the API Gateway base path / response envelope.
-- Wire this service into the real Jira board (G7-US01-US20) and open your
-  first PR against it - see guide §15 Phase 4.

@@ -50,8 +50,9 @@ usm:
 
 group6:
   facility-service:
-    base-url: http://localhost:8081
-    enforce-validation: false
+    # Non-colliding placeholder: service-request-service listens on 8081; Group 6 hasn't given us a real port yet
+    base-url: ${GROUP6_FACILITY_SERVICE_BASE_URL:http://localhost:9091}
+    enforce-validation: ${GROUP6_FACILITY_ENFORCE_VALIDATION:false}
 
 services:
   identity:

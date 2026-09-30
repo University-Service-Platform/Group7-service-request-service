@@ -25,7 +25,7 @@ public class FacilityValidationClient {
     @Autowired
     public FacilityValidationClient(
             RestTemplateBuilder restTemplateBuilder,
-            @Value("${group6.facility-service.base-url:http://localhost:8081}") String baseUrl) {
+            @Value("${group6.facility-service.base-url:http://localhost:9091}") String baseUrl) {
         this(restTemplateBuilder.build(), baseUrl);
     }
 
