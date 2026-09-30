@@ -1,5 +1,7 @@
 package com.usm.servicerequest.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.usm.servicerequest.domain.RequestCategory;
 import com.usm.servicerequest.domain.RequestPriority;
 import jakarta.validation.constraints.NotBlank;
@@ -7,11 +9,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /** US-01, FR-01, API-01 (guide §4.1). */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record CreateServiceRequestRequest(
 
         @NotNull(message = "category is required")
         RequestCategory category,
 
+        @JsonAlias({"facilityCode", "roomCode", "roomNumber", "room", "facilityId"})
         @NotBlank(message = "location is required")
         @Size(max = 255)
         String location,

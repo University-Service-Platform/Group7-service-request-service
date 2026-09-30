@@ -20,13 +20,15 @@ import java.util.concurrent.atomic.AtomicLong;
 @Component
 public class RequestIdGenerator {
 
+    private final ServiceRequestRepository repository;
     private final AtomicLong counter;
     private volatile int currentYear;
     private final Object lock = new Object();
 
     public RequestIdGenerator(ServiceRequestRepository repository) {
+        this.repository = repository;
         this.currentYear = Year.now().getValue();
-        this.counter = new AtomicLong(repository.count());
+        this.counter = new AtomicLong(calculateInitialCounter(repository, this.currentYear));
     }
 
     public String nextId() {
@@ -34,10 +36,35 @@ public class RequestIdGenerator {
         synchronized (lock) {
             if (year != currentYear) {
                 currentYear = year;
-                counter.set(0);
+                counter.set(calculateInitialCounter(repository, year));
             }
             long next = counter.incrementAndGet();
-            return String.format("SR-%d-%04d", year, next);
+            String candidate = String.format("SR-%d-%04d", year, next);
+            while (repository.existsById(candidate)) {
+                next = counter.incrementAndGet();
+                candidate = String.format("SR-%d-%04d", year, next);
+            }
+            return candidate;
+        }
+    }
+
+    private static long calculateInitialCounter(ServiceRequestRepository repo, int year) {
+        try {
+            java.util.Optional<String> maxId = repo.findMaxRequestIdForYear(year);
+            if (maxId != null && maxId.isPresent() && maxId.get() != null) {
+                String id = maxId.get();
+                int lastDash = id.lastIndexOf('-');
+                if (lastDash >= 0 && lastDash < id.length() - 1) {
+                    return Long.parseLong(id.substring(lastDash + 1));
+                }
+            }
+        } catch (Exception ignored) {
+            // Fall back to row count if custom query fails
+        }
+        try {
+            return repo.count();
+        } catch (Exception ignored) {
+            return 0L;
         }
     }
 }
