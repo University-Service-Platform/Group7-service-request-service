@@ -1,6 +1,7 @@
 package com.usm.servicerequest.service;
 
 import com.usm.servicerequest.client.FacilityValidationClient;
+import com.usm.servicerequest.client.IdentityValidationClient;
 import com.usm.servicerequest.domain.RequestCategory;
 import com.usm.servicerequest.domain.RequestStatus;
 import com.usm.servicerequest.domain.ServiceRequest;
@@ -59,16 +60,25 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     private final RequestIdGenerator idGenerator;
     private final FacilityValidationClient facilityValidationClient;
     private final boolean enforceValidation;
+    private final IdentityValidationClient identityValidationClient;
 
     public ServiceRequestServiceImpl(ServiceRequestRepository repository, RequestIdGenerator idGenerator) {
-        this(repository, idGenerator, null, false);
+        this(repository, idGenerator, null, false, null);
     }
 
     public ServiceRequestServiceImpl(
             ServiceRequestRepository repository,
             RequestIdGenerator idGenerator,
             FacilityValidationClient facilityValidationClient) {
-        this(repository, idGenerator, facilityValidationClient, false);
+        this(repository, idGenerator, facilityValidationClient, false, null);
+    }
+
+    public ServiceRequestServiceImpl(
+            ServiceRequestRepository repository,
+            RequestIdGenerator idGenerator,
+            FacilityValidationClient facilityValidationClient,
+            boolean enforceValidation) {
+        this(repository, idGenerator, facilityValidationClient, enforceValidation, null);
     }
 
     @Autowired
@@ -76,11 +86,13 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
             ServiceRequestRepository repository,
             RequestIdGenerator idGenerator,
             FacilityValidationClient facilityValidationClient,
-            @Value("${group6.facility-service.enforce-validation:false}") boolean enforceValidation) {
+            @Value("${group6.facility-service.enforce-validation:false}") boolean enforceValidation,
+            @Autowired(required = false) IdentityValidationClient identityValidationClient) {
         this.repository = repository;
         this.idGenerator = idGenerator;
         this.facilityValidationClient = facilityValidationClient;
         this.enforceValidation = enforceValidation;
+        this.identityValidationClient = identityValidationClient;
     }
 
     @Override
@@ -161,6 +173,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Override
     public ServiceRequestResponse triage(String requestId, TriageRequest request, AuthContext caller) {
+        validateServiceDeskOfficerLive(caller);
         ServiceRequest entity = findOrThrow(requestId);
 
         if (!TRIAGEABLE.contains(entity.getStatus())) {
@@ -185,6 +198,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Override
     public ServiceRequestResponse reject(String requestId, RejectRequest request, AuthContext caller) {
+        validateServiceDeskOfficerLive(caller);
         ServiceRequest entity = findOrThrow(requestId);
 
         // BR-05: enforced again here (not just @NotBlank on the DTO) so this stays true even if
@@ -204,6 +218,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Override
     public ServiceRequestResponse escalate(String requestId, EscalateRequest request, AuthContext caller) {
+        validateServiceDeskOfficerLive(caller);
         ServiceRequest entity = findOrThrow(requestId);
 
         if (!ESCALATABLE.contains(entity.getStatus())) {
@@ -213,6 +228,19 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
         entity.escalate(request.responsibleServiceUnit(), Instant.now());
         return ServiceRequestResponse.from(entity);
+    }
+
+    private void validateServiceDeskOfficerLive(AuthContext caller) {
+        if (caller == null) {
+            throw new ForbiddenOperationException("Caller context is required.");
+        }
+        if (identityValidationClient != null) {
+            identityValidationClient.validateUser(
+                    caller.getUserId(),
+                    Role.SERVICE_DESK_OFFICER,
+                    caller.getRawToken()
+            );
+        }
     }
 
     @Override

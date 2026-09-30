@@ -18,6 +18,7 @@ import com.usm.servicerequest.exception.ResourceNotFoundException;
 import com.usm.servicerequest.repository.ServiceRequestRepository;
 import com.usm.servicerequest.security.AuthContext;
 import com.usm.servicerequest.client.FacilityValidationClient;
+import com.usm.servicerequest.client.IdentityValidationClient;
 import com.usm.servicerequest.dto.FacilityValidationResult;
 import com.usm.servicerequest.security.Role;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -56,6 +61,7 @@ class ServiceRequestServiceImplTest {
 
     private static final AuthContext STUDENT = new AuthContext("student-1", Role.STUDENT, "Faculty of Science");
     private static final AuthContext OFFICER = new AuthContext("officer-1", Role.SERVICE_DESK_OFFICER, "IT Services");
+    private static final AuthContext OFFICER_WITH_TOKEN = new AuthContext("officer-1", Role.SERVICE_DESK_OFFICER, "IT Services", "sample.jwt.token");
     private static final AuthContext SERVICE_CALL = new AuthContext("work-order-service", Role.SERVICE, "SYSTEM");
 
     @BeforeEach
@@ -519,5 +525,162 @@ class ServiceRequestServiceImplTest {
 
         assertThat(response.requestId()).isEqualTo("SR-2026-0101");
         verifyNoInteractions(mockClient);
+    }
+
+    // -------------------------------------------------------------
+    // Live Identity Re-validation Tests (triage, reject, escalate)
+    // -------------------------------------------------------------
+
+    @Test
+    void triage_whenIdentityServiceAuthorizes_proceedsNormally() {
+        IdentityValidationClient identityClient = mock(IdentityValidationClient.class);
+        doNothing().when(identityClient).validateUser(eq("officer-1"), eq(Role.SERVICE_DESK_OFFICER), eq("sample.jwt.token"));
+
+        ServiceRequestServiceImpl serviceWithIdentity = new ServiceRequestServiceImpl(
+                repository, idGenerator, null, false, identityClient);
+
+        ServiceRequest entity = newRequest(RequestStatus.NEW);
+        when(repository.findById("SR-2026-0001")).thenReturn(Optional.of(entity));
+
+        TriageRequest triageReq = new TriageRequest(RequestCategory.IT, RequestPriority.HIGH, "Network Support");
+        ServiceRequestResponse response = serviceWithIdentity.triage("SR-2026-0001", triageReq, OFFICER_WITH_TOKEN);
+
+        assertThat(response.status()).isEqualTo(RequestStatus.ACKNOWLEDGED);
+        assertThat(response.responsibleServiceUnit()).isEqualTo("Network Support");
+        verify(identityClient).validateUser("officer-1", Role.SERVICE_DESK_OFFICER, "sample.jwt.token");
+    }
+
+    @Test
+    void triage_whenIdentityServiceReportsInactiveOrUnauthorized_throwsForbidden() {
+        IdentityValidationClient identityClient = mock(IdentityValidationClient.class);
+        doThrow(new ForbiddenOperationException("User re-validation failed: ACCOUNT_INACTIVE"))
+                .when(identityClient).validateUser(any(), any(), any());
+
+        ServiceRequestServiceImpl serviceWithIdentity = new ServiceRequestServiceImpl(
+                repository, idGenerator, null, false, identityClient);
+
+        TriageRequest triageReq = new TriageRequest(RequestCategory.IT, RequestPriority.HIGH, "Network Support");
+
+        assertThatThrownBy(() -> serviceWithIdentity.triage("SR-2026-0001", triageReq, OFFICER_WITH_TOKEN))
+                .isInstanceOf(ForbiddenOperationException.class)
+                .hasMessageContaining("ACCOUNT_INACTIVE");
+    }
+
+    @Test
+    void triage_whenIdentityServiceUnreachable_throwsForbidden() {
+        IdentityValidationClient identityClient = mock(IdentityValidationClient.class);
+        doThrow(new ForbiddenOperationException("Identity service unreachable or timed out during re-validation"))
+                .when(identityClient).validateUser(any(), any(), any());
+
+        ServiceRequestServiceImpl serviceWithIdentity = new ServiceRequestServiceImpl(
+                repository, idGenerator, null, false, identityClient);
+
+        TriageRequest triageReq = new TriageRequest(RequestCategory.IT, RequestPriority.HIGH, "Network Support");
+
+        assertThatThrownBy(() -> serviceWithIdentity.triage("SR-2026-0001", triageReq, OFFICER_WITH_TOKEN))
+                .isInstanceOf(ForbiddenOperationException.class)
+                .hasMessageContaining("Identity service unreachable");
+    }
+
+    @Test
+    void reject_whenIdentityServiceAuthorizes_proceedsNormally() {
+        IdentityValidationClient identityClient = mock(IdentityValidationClient.class);
+        doNothing().when(identityClient).validateUser(eq("officer-1"), eq(Role.SERVICE_DESK_OFFICER), eq("sample.jwt.token"));
+
+        ServiceRequestServiceImpl serviceWithIdentity = new ServiceRequestServiceImpl(
+                repository, idGenerator, null, false, identityClient);
+
+        ServiceRequest entity = newRequest(RequestStatus.NEW);
+        when(repository.findById("SR-2026-0001")).thenReturn(Optional.of(entity));
+
+        RejectRequest rejectReq = new RejectRequest("Duplicate request");
+        ServiceRequestResponse response = serviceWithIdentity.reject("SR-2026-0001", rejectReq, OFFICER_WITH_TOKEN);
+
+        assertThat(response.status()).isEqualTo(RequestStatus.REJECTED);
+        assertThat(response.rejectionReason()).isEqualTo("Duplicate request");
+        verify(identityClient).validateUser("officer-1", Role.SERVICE_DESK_OFFICER, "sample.jwt.token");
+    }
+
+    @Test
+    void reject_whenIdentityServiceReportsInactiveOrUnauthorized_throwsForbidden() {
+        IdentityValidationClient identityClient = mock(IdentityValidationClient.class);
+        doThrow(new ForbiddenOperationException("User re-validation failed: Role mismatch"))
+                .when(identityClient).validateUser(any(), any(), any());
+
+        ServiceRequestServiceImpl serviceWithIdentity = new ServiceRequestServiceImpl(
+                repository, idGenerator, null, false, identityClient);
+
+        RejectRequest rejectReq = new RejectRequest("Duplicate request");
+
+        assertThatThrownBy(() -> serviceWithIdentity.reject("SR-2026-0001", rejectReq, OFFICER_WITH_TOKEN))
+                .isInstanceOf(ForbiddenOperationException.class)
+                .hasMessageContaining("Role mismatch");
+    }
+
+    @Test
+    void reject_whenIdentityServiceUnreachable_throwsForbidden() {
+        IdentityValidationClient identityClient = mock(IdentityValidationClient.class);
+        doThrow(new ForbiddenOperationException("Identity service unreachable during re-validation"))
+                .when(identityClient).validateUser(any(), any(), any());
+
+        ServiceRequestServiceImpl serviceWithIdentity = new ServiceRequestServiceImpl(
+                repository, idGenerator, null, false, identityClient);
+
+        RejectRequest rejectReq = new RejectRequest("Duplicate request");
+
+        assertThatThrownBy(() -> serviceWithIdentity.reject("SR-2026-0001", rejectReq, OFFICER_WITH_TOKEN))
+                .isInstanceOf(ForbiddenOperationException.class)
+                .hasMessageContaining("Identity service unreachable");
+    }
+
+    @Test
+    void escalate_whenIdentityServiceAuthorizes_proceedsNormally() {
+        IdentityValidationClient identityClient = mock(IdentityValidationClient.class);
+        doNothing().when(identityClient).validateUser(eq("officer-1"), eq(Role.SERVICE_DESK_OFFICER), eq("sample.jwt.token"));
+
+        ServiceRequestServiceImpl serviceWithIdentity = new ServiceRequestServiceImpl(
+                repository, idGenerator, null, false, identityClient);
+
+        ServiceRequest entity = newRequest(RequestStatus.ACKNOWLEDGED);
+        when(repository.findById("SR-2026-0001")).thenReturn(Optional.of(entity));
+
+        EscalateRequest escalateReq = new EscalateRequest("Senior Management");
+        ServiceRequestResponse response = serviceWithIdentity.escalate("SR-2026-0001", escalateReq, OFFICER_WITH_TOKEN);
+
+        assertThat(response.status()).isEqualTo(RequestStatus.ESCALATED);
+        assertThat(response.responsibleServiceUnit()).isEqualTo("Senior Management");
+        verify(identityClient).validateUser("officer-1", Role.SERVICE_DESK_OFFICER, "sample.jwt.token");
+    }
+
+    @Test
+    void escalate_whenIdentityServiceReportsInactiveOrUnauthorized_throwsForbidden() {
+        IdentityValidationClient identityClient = mock(IdentityValidationClient.class);
+        doThrow(new ForbiddenOperationException("User re-validation failed: ACCOUNT_INACTIVE"))
+                .when(identityClient).validateUser(any(), any(), any());
+
+        ServiceRequestServiceImpl serviceWithIdentity = new ServiceRequestServiceImpl(
+                repository, idGenerator, null, false, identityClient);
+
+        EscalateRequest escalateReq = new EscalateRequest("Senior Management");
+
+        assertThatThrownBy(() -> serviceWithIdentity.escalate("SR-2026-0001", escalateReq, OFFICER_WITH_TOKEN))
+                .isInstanceOf(ForbiddenOperationException.class)
+                .hasMessageContaining("ACCOUNT_INACTIVE");
+    }
+
+    @Test
+    void escalate_whenIdentityServiceUnreachable_throwsForbidden() {
+        IdentityValidationClient identityClient = mock(IdentityValidationClient.class);
+        doThrow(new ForbiddenOperationException("Identity service unreachable during re-validation"))
+                .when(identityClient).validateUser(any(), any(), any());
+
+        ServiceRequestServiceImpl serviceWithIdentity = new ServiceRequestServiceImpl(
+                repository, idGenerator, null, false, identityClient);
+
+        EscalateRequest escalateReq = new EscalateRequest("Senior Management");
+
+        assertThatThrownBy(() -> serviceWithIdentity.escalate("SR-2026-0001", escalateReq, OFFICER_WITH_TOKEN))
+                .isInstanceOf(ForbiddenOperationException.class)
+                .hasMessageContaining("Identity service unreachable");
     }
 }

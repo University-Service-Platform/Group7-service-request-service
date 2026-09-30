@@ -79,7 +79,7 @@ public class JwtTokenService {
                 return Optional.empty();
             }
 
-            return Optional.of(new AuthContext(userId, role, department));
+            return Optional.of(new AuthContext(userId, role, department, token));
         } catch (JwtException | IllegalArgumentException invalidToken) {
             return Optional.empty();
         }
