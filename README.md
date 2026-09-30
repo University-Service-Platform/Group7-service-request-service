@@ -83,7 +83,9 @@ When submitting a request with category `FACILITY` or `EQUIPMENT`, `FacilityVali
 
 - **Confirmed valid / available resource codes**: `LAB-101`, `AUD-MAIN`, `STUDY-POD-01`, `BASKETBALL-COURT-1` (confirms resource exists and `validForReservation=true`).
 - **Negative-path testing ("resource not found")**: `LAB-999` (triggers a "resource not found" response from Group 6).
-- **Inactive / unavailable resources**: No confirmed inactive/unavailable code exists yet from Group 6, so that path can currently only be exercised with a mocked response in unit tests.
+- **Negative-path testing (unavailable / inactive resources)**:
+  - `UNAVAIL-ROOM-01`: Confirmed exists and active, but currently unavailable (`validForReservation=false`).
+  - `INACTIVE-ROOM-01`: Confirmed exists, but inactive/decommissioned (`validForReservation=false`).
 
 ## API summary
 
@@ -115,8 +117,9 @@ full story/FR/role mapping this table is drawn from.
 
 | Placeholder today | File(s) | Swap when / Status |
 | --- | --- | --- |
-| JWT signing key + claim names (`sub`/`role`/`department`) | `application.yml` (`services.identity.*`), `ExternalTokenValidator`, `IdentityJwksProvider`, `JwtAuthFilter` | **Done** — RS256/JWKS verification against Group 5's real published contract is built, tested, and merged; internal HS256 remains for dev and S2S calls |
+| JWT signing key + claim names (`sub`/`role`/`department`) | `application.yml` (`services.identity.*`), `ExternalTokenValidator`, `IdentityJwksProvider`, `JwtAuthFilter`, `IdentityValidationClient` | **Done** — RS256/JWKS token verification and live user re-validation (`GET /api/v1/validation/users/{id}`) against Group 5's contract are built and tested. Group 5's real staging service is live at `https://university-identity-service.onrender.com` (API under `/api/v1`, JWKS at `/.well-known/jwks.json`, `iss=university-identity-service`, `aud=university-services-platform`), configurable via `IDENTITY_SERVICE_BASE_URL` (note: Render's free tier has cold starts, so callers should use 60–90s timeouts; `http://localhost:8001` remains the local-dev default); internal HS256 remains for dev and S2S calls |
 | `location` as free text | `CreateServiceRequestRequest`, `ServiceRequest.location`, `FacilityValidationClient` | `FacilityValidationClient` is built and wired into `ServiceRequestServiceImpl`. Open: whether `location` should be constrained to match Group 6's resource-code format (e.g. `LAB-101`), since right now it's still free text and nothing enforces the format |
+| Group 6 facility service URL (`group6.facility-service.base-url`) | `application.yml` (`group6.facility-service.base-url`) | **Permanent port collision**: Group 6 confirmed their real port is `8081` — identical to this service's own `server.port: 8081`. The default is set to `http://localhost:9091` to avoid self-loopback. Local testing against a real Group 6 instance outside Docker requires overriding one side's port via env vars (`GROUP6_FACILITY_SERVICE_BASE_URL` or `SERVER_PORT`), as this is a design collision across services, not a temporary placeholder. |
 | Status enum names | `RequestStatus` | Tech Lead locks the final names - this is the only file that changes |
 | Response envelope / error shape | `GlobalExceptionHandler`, `ApiError` | API Gateway team agrees a shared shape - wrap responses, don't rewrite logic |
 
@@ -159,3 +162,4 @@ your PR descriptions) with specifics as you extend the code yourself.
 - Confirm whether `location` should already reference a Group 6 facility ID and whether format constraints (e.g. matching `LAB-101`) should be enforced.
 - Get the final status enum names signed off by your Tech Lead (specifically the unresolved `RequestStatus.CANCELLED` decision: who can cancel and from which statuses).
 - Agree the API Gateway base path / response envelope.
+- Directory Service dependency: Group 5 confirmed department and service-unit data now originates from a separate Directory Service (URL not yet published; client implementation pending contract/URL).

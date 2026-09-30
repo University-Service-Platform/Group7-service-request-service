@@ -161,6 +161,70 @@ class FacilityValidationClientTest {
     }
 
     @Test
+    void validateByCode_unavailRoom01_returnsValidForReservationFalse() {
+        String json = """
+                {
+                  "success": true,
+                  "message": "Resource validation completed",
+                  "data": {
+                    "resourceId": 10, "resourceCode": "UNAVAIL-ROOM-01", "facilityId": 2,
+                    "exists": true, "active": true, "available": false,
+                    "capacity": 25, "approvalRequired": false,
+                    "validForReservation": false,
+                    "message": "Resource is currently unavailable"
+                  },
+                  "timestamp": "2026-09-30T10:00:00"
+                }
+                """;
+
+        mockServer.expect(requestTo("http://localhost:8081/api/resources/code/UNAVAIL-ROOM-01/validate"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(json, MediaType.APPLICATION_JSON));
+
+        FacilityValidationResult result = client.validateByCode("UNAVAIL-ROOM-01");
+
+        mockServer.verify();
+        assertThat(result).isNotNull();
+        assertThat(result.exists()).isTrue();
+        assertThat(result.active()).isTrue();
+        assertThat(result.available()).isFalse();
+        assertThat(result.validForReservation()).isFalse();
+        assertThat(result.resourceCode()).isEqualTo("UNAVAIL-ROOM-01");
+    }
+
+    @Test
+    void validateByCode_inactiveRoom01_returnsValidForReservationFalse() {
+        String json = """
+                {
+                  "success": true,
+                  "message": "Resource validation completed",
+                  "data": {
+                    "resourceId": 11, "resourceCode": "INACTIVE-ROOM-01", "facilityId": 2,
+                    "exists": true, "active": false, "available": false,
+                    "capacity": 25, "approvalRequired": false,
+                    "validForReservation": false,
+                    "message": "Resource is decommissioned/inactive"
+                  },
+                  "timestamp": "2026-09-30T10:00:00"
+                }
+                """;
+
+        mockServer.expect(requestTo("http://localhost:8081/api/resources/code/INACTIVE-ROOM-01/validate"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(json, MediaType.APPLICATION_JSON));
+
+        FacilityValidationResult result = client.validateByCode("INACTIVE-ROOM-01");
+
+        mockServer.verify();
+        assertThat(result).isNotNull();
+        assertThat(result.exists()).isTrue();
+        assertThat(result.active()).isFalse();
+        assertThat(result.available()).isFalse();
+        assertThat(result.validForReservation()).isFalse();
+        assertThat(result.resourceCode()).isEqualTo("INACTIVE-ROOM-01");
+    }
+
+    @Test
     void validateByCode_serverError500_returnsSafeFallbackResult() {
         mockServer.expect(requestTo("http://localhost:8081/api/resources/code/LAB-101/validate"))
                 .andExpect(method(HttpMethod.GET))

@@ -73,9 +73,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             .map(r -> new SimpleGrantedAuthority("ROLE_" + r.name()))
                             .toList();
 
-                    // Group 5 tokens do not carry department or service_unit claims; set to null.
-                    // Eligibility endpoint must be called separately if department info is needed.
-                    AuthContext authContext = new AuthContext(result.userId(), result.roles(), null);
+                    AuthContext authContext = new AuthContext(result.userId(), result.roles(), null, token);
 
                     var authentication = new UsernamePasswordAuthenticationToken(authContext, null, authorities);
                     SecurityContextHolder.getContext().setAuthentication(authentication);

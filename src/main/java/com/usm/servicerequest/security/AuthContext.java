@@ -17,15 +17,21 @@ public class AuthContext {
     private final Role role;
     private final Set<Role> roles;
     private final String departmentOrServiceUnit;
+    private final String rawToken;
 
     /**
      * Legacy single-role constructor used by the internal HS256 and dev token paths.
      */
     public AuthContext(String userId, Role role, String departmentOrServiceUnit) {
+        this(userId, role, departmentOrServiceUnit, null);
+    }
+
+    public AuthContext(String userId, Role role, String departmentOrServiceUnit, String rawToken) {
         this.userId = userId;
         this.role = role;
         this.roles = role != null ? Collections.singleton(role) : Collections.emptySet();
         this.departmentOrServiceUnit = departmentOrServiceUnit;
+        this.rawToken = rawToken;
     }
 
     /**
@@ -34,11 +40,20 @@ public class AuthContext {
      * departmentOrServiceUnit should be passed as null.
      */
     public AuthContext(String userId, Set<Role> roles, String departmentOrServiceUnit) {
+        this(userId, roles, departmentOrServiceUnit, null);
+    }
+
+    public AuthContext(String userId, Set<Role> roles, String departmentOrServiceUnit, String rawToken) {
         this.userId = userId;
         this.roles = roles != null ? Collections.unmodifiableSet(roles) : Collections.emptySet();
         // Primary role for legacy single-role code paths — authorization should rely on the granted authorities, not this field.
         this.role = this.roles.isEmpty() ? null : this.roles.iterator().next();
         this.departmentOrServiceUnit = departmentOrServiceUnit;
+        this.rawToken = rawToken;
+    }
+
+    public String getRawToken() {
+        return rawToken;
     }
 
     public String getUserId() {
